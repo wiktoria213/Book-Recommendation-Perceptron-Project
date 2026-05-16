@@ -20,33 +20,64 @@ users = pd.read_csv(
 )
 
 ratings = ratings[ratings["Book-Rating"] != 0]
-users = users[users["Age"].notnull()]
 
 ratings["Liked"] = ratings["Book-Rating"].apply(
     lambda rating: 1 if rating >= 7 else -1)
 
-print("\nRATINGS")
-print(ratings[["User-ID", "ISBN", "Book-Rating", "Liked"]].head(20))
-
+print("\nLIKED COUNTS")
 print(ratings["Liked"].value_counts())
 
+
 data = ratings.merge(users, on="User-ID")
-user_rating_counts = data.groupby("User-ID").size().reset_index(name="Ratings-Count")
 
-active_users = user_rating_counts[user_rating_counts["Ratings-Count"] > 1]
 
-data = data[data["User-ID"].isin(active_users["User-ID"])]
+user_features = data.groupby("User-ID").agg(
+    User_Ratings_Count=("Book-Rating", "count"),
+    User_Average_Rating=("Book-Rating", "mean")).reset_index()
 
-user_features = users.merge(active_users, on="User-ID")
 
-print("\nUSER FEATURES")
-print(user_features[["User-ID", "Age", "Ratings-Count"]].head(20))
-X = data[["Age", "Book-Rating"]].values
+book_features = data.groupby("ISBN").agg(
+    Book_Ratings_Count=("Book-Rating", "count"),
+    Book_Average_Rating=("Book-Rating", "mean")).reset_index()
+
+
+active_users = user_features[user_features["User_Ratings_Count"] > 10]
+popular_books = book_features[book_features["Book_Ratings_Count"] > 10]
+
+data = data.merge(active_users, on="User-ID")
+data = data.merge(popular_books, on="ISBN")
+
+print("\nDATA WITH FEATURES")
+print(data[
+    [
+        "ISBN",
+        "Book_Ratings_Count",
+        "Book_Average_Rating",
+        "User-ID",
+        "Book-Rating",
+        "User_Ratings_Count",
+        "User_Average_Rating",
+        "Liked",
+        
+    ]
+].head(20))
+
+
+#dane wejściowe dla perceptrona
+X = data[
+    [
+        "User_Average_Rating",
+        "Book_Ratings_Count",
+        "Book_Average_Rating",
+    ]
+].values
+
+
 y = data["Liked"].values
 
 perceptron = PerceptronScratch(
     lr=0.01,
-    epochs=10)
+    epochs=50)
 
 perceptron.fit(X, y)
 
