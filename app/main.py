@@ -62,6 +62,8 @@ print(data[
     ]
 ].head(20))
 
+#losowy dobór rekordów
+data = data.sample(frac=1, random_state=42)
 
 #dane wejściowe dla perceptrona
 X = data[
@@ -75,11 +77,23 @@ X = data[
 
 y = data["Liked"].values
 
+split_index = int(0.8 * len(X))
+
+X_train = X[:split_index]
+X_test = X[split_index:]
+
+y_train = y[:split_index]
+y_test = y[split_index:]
+
+
 perceptron = PerceptronScratch(
     lr=0.01,
     epochs=50)
 
-perceptron.fit(X, y)
+perceptron.fit(X_train, y_train)
+
+predictions = perceptron.predict(X_test)
+accuracy = (predictions == y_test).mean()
 
 print("\nWagi perceptronu:")
 print(perceptron.w)
@@ -89,3 +103,17 @@ print(perceptron.b)
 
 print("\nBłędy w epokach:")
 print(perceptron.errors_per_epoch)
+
+print("\nAccuracy:")
+print(round(accuracy, 4))
+
+true_positive = ((predictions == 1) & (y_test == 1)).sum()
+true_negative = ((predictions == -1) & (y_test == -1)).sum()
+false_positive = ((predictions == 1) & (y_test == -1)).sum()
+false_negative = ((predictions == -1) & (y_test == 1)).sum()
+
+print("\nMacierz pomyłek:")
+print("TP:", true_positive)
+print("TN:", true_negative)
+print("FP:", false_positive)
+print("FN:", false_negative)
