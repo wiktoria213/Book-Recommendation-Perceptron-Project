@@ -9,15 +9,19 @@ class PerceptronScratch:
         self.b = 0.0
         self.errors_per_epoch = []
 
-    def fit(self, X, y):
-        self.w = np.zeros(X.shape[1])
+    def fit(self, x, y):
+        self.w = np.zeros(x.shape[1])
         self.b = 0.0
         self.errors_per_epoch = []
 
+        # proces uczenie perceptronu
         for _ in range(self.epochs):
             errors = 0
-            for xi, target in zip(X, y):
+
+            for xi, target in zip(x, y, strict=False):
                 prediction = self.predict_one(xi)
+
+                # aktualizacja wag przy błędnych perdykcjach
                 if prediction != target:
                     self.w = self.w + self.lr * target * xi
                     self.b = self.b + self.lr * target
@@ -27,12 +31,13 @@ class PerceptronScratch:
         return self
 
     def predict_one(self, x):
+        # obliczanie wyniku dla pojedynczego rekordu
         score = np.dot(x, self.w) + self.b
         return 1 if score >= 0 else -1
 
-    def decision_function(self, X):
-        return np.dot(X, self.w) + self.b
+    def decision_function(self, x):
+        return np.dot(x, self.w) + self.b
 
-    def predict(self, X):
-        scores = self.decision_function(X)
+    def predict(self, x):
+        scores = self.decision_function(x)
         return np.where(scores >= 0, 1, -1)
