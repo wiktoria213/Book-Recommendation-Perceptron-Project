@@ -1,5 +1,3 @@
-# Python Template
-
 [![python](https://img.shields.io/badge/Python-3.14-3776AB.svg?style=flat&logo=python&logoColor=white)](https://www.python.org)
 [![ruff](https://github.com/wnowicki/pytemp/workflows/Ruff/badge.svg)](https://github.com/wnowicki/pytemp/actions?query=branch%3Amain)
 [![pytest](https://github.com/wnowicki/pytemp/workflows/Pytest/badge.svg)](https://github.com/wnowicki/pytemp/actions?query=branch%3Amain)
@@ -7,7 +5,7 @@
 [![markdown](https://github.com/wnowicki/pytemp/workflows/Markdown%20Lint/badge.svg)](https://github.com/wnowicki/pytemp/actions?query=branch%3Amain)
 [![License: GPLv3](https://img.shields.io/badge/License-MIT-blue.svg)](https://license.md/licenses/mit-license/)
 
-## Book Recommendation System Using Perceptron
+# Book Recommendation System Using Perceptron
 
 This project implements a simple book recommendation system using a perceptron created from scratch in Python.
 The model predicts whether a user will like a book based on user and book rating statistics.
@@ -57,9 +55,4 @@ uv run pytest
 uv run ruff check .
 ```
 
-## Security
-
-If you discover any security-related issues, please email [email](mailto:email) instead of using the issue tracker.
-
----
-Copyright (c) [year] [fullname]
+Copyright (c) [2026] [Wiktoria Kozdrój]
