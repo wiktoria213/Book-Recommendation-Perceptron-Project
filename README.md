@@ -1,3 +1,5 @@
+# Book Recommendation System Using Perceptron
+
 [![python](https://img.shields.io/badge/Python-3.14-3776AB.svg?style=flat&logo=python&logoColor=white)](https://www.python.org)
 [![ruff](https://github.com/wnowicki/pytemp/workflows/Ruff/badge.svg)](https://github.com/wnowicki/pytemp/actions?query=branch%3Amain)
 [![pytest](https://github.com/wnowicki/pytemp/workflows/Pytest/badge.svg)](https://github.com/wnowicki/pytemp/actions?query=branch%3Amain)
@@ -5,17 +7,13 @@
 [![markdown](https://github.com/wnowicki/pytemp/workflows/Markdown%20Lint/badge.svg)](https://github.com/wnowicki/pytemp/actions?query=branch%3Amain)
 [![License: GPLv3](https://img.shields.io/badge/License-MIT-blue.svg)](https://license.md/licenses/mit-license/)
 
-# Book Recommendation System Using Perceptron
-
 This project implements a simple book recommendation system using a perceptron created from scratch in Python.
 
 The model predicts whether a user will like a book based on user and book rating statistics.
 
 ## Dataset
 
-Book-Crossing Dataset:
-
-https://www.kaggle.com/datasets/ruchi798/bookcrossing-dataset/data
+[Book-Crossing Dataset](https://www.kaggle.com/datasets/ruchi798/bookcrossing-dataset/data)
 
 ## How to Run the Project
 
