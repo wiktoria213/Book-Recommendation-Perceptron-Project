@@ -8,11 +8,13 @@
 # Book Recommendation System Using Perceptron
 
 This project implements a simple book recommendation system using a perceptron created from scratch in Python.
+
 The model predicts whether a user will like a book based on user and book rating statistics.
 
 ## Dataset
 
 Book-Crossing Dataset:
+
 https://www.kaggle.com/datasets/ruchi798/bookcrossing-dataset/data
 
 ## How to Run the Project
