@@ -8,52 +8,67 @@ ratings = pd.read_csv("app/datasets/Ratings.csv", encoding="latin-1", sep=";")
 
 users = pd.read_csv("app/datasets/Users.csv", encoding="latin-1", sep=";")
 
+# usunięcie użytkowników bez wieku i ograniczenie do wieku 13+
+users = users[users["Age"].notnull()]
+users = users[users["Age"] >= 13]
+
 # usunięcie rekordów bez ocen
 ratings = ratings[ratings["Book-Rating"] != 0]
 
 # podział klas na: polubi, nie polubi
 ratings["Liked"] = ratings["Book-Rating"].apply(lambda rating: 1 if rating >= 7 else -1)
 
-# połączenie tabel z danymi: ratings+users
+# połączenie tabel z danymi: ratings + users
 data = ratings.merge(users, on="User-ID")
 
-# grupowanie rekordów
-user_features = (
-    data.groupby("User-ID")
-    .agg(User_Ratings_Count=("Book-Rating", "count"), User_Average_Rating=("Book-Rating", "mean"))
-    .reset_index()
+# utworzenie grup wiekowych
+data["Age_Group"] = pd.cut(
+    data["Age"],
+    bins=[13, 18, 25, 35, 50, 100],
+    labels=["13-18", "19-25", "26-35", "36-50", "51+"],
+    include_lowest=True,
 )
 
+# średnia ocen książki ogólnie
 book_features = (
     data.groupby("ISBN")
-    .agg(Book_Ratings_Count=("Book-Rating", "count"), Book_Average_Rating=("Book-Rating", "mean"))
+    .agg(Book_Average_Rating=("Book-Rating", "mean"), Book_Ratings_Count=("Book-Rating", "count"))
     .reset_index()
 )
 
-# wykluczenie książek oraz użytkowników poniżej 10 opinii
-active_users = user_features[user_features["User_Ratings_Count"] > 10]
-popular_books = book_features[book_features["Book_Ratings_Count"] > 10]
+# średnia ocen książki w danej grupie wiekowej
+book_age_features = (
+    data.groupby(["ISBN", "Age_Group"], observed=True)
+    .agg(Book_Average_Rating_By_Age=("Book-Rating", "mean"), Book_Age_Ratings_Count=("Book-Rating", "count"))
+    .reset_index()
+)
+
+# wykluczenie przypadków, gdzie książka ma zbyt mało ocen w danej grupie wiekowej
+reliable_book_age_features = book_age_features[
+    book_age_features["Book_Age_Ratings_Count"] > 10
+]
 
 # selekcja danych
-data = data.merge(active_users, on="User-ID")
-data = data.merge(popular_books, on="ISBN")
+data = data.merge(book_features, on="ISBN")
+data = data.merge(reliable_book_age_features, on=["ISBN", "Age_Group"])
+
 print("\nLiczba rekordów po filtracji:")
 print(len(data))
+
 print("\nPodział klas po filtracji danych:")
 print(data["Liked"].value_counts())
 
-# losowy dobór rekordów
+# losowe wymieszanie rekordów
 data = data.sample(frac=1, random_state=42)
 
 # dane wejściowe dla perceptrona
 X = data[
     [
-        "User_Average_Rating",
-        "Book_Ratings_Count",
+        "Age",
+        "Book_Average_Rating_By_Age",
         "Book_Average_Rating",
     ]
 ].values
-
 
 y = data["Liked"].values
 
@@ -104,3 +119,79 @@ print("Poprawnie przewidziane - polubi:", true_positive)
 print("Poprawnie przewidziane - nie polubi:", true_negative)
 print("Błędnie przewidziane - polubi:", false_positive)
 print("Błędnie przewidziane - nie polubi:", false_negative)
+
+# rekomendacja dla przykładowego użytkownika
+new_user_age = int(input("\nPodaj wiek użytkownika: "))
+
+if new_user_age < 13 or new_user_age > 100:
+    print("Wiek użytkownika musi być w zakresie od 13 do 100.")
+    exit()
+
+# przypisanie użytkownika do danej grupy wiekowej
+new_user_age_group = pd.cut(
+    [new_user_age],
+    bins=[13, 18, 25, 35, 50, 100],
+    labels=["13-18", "19-25", "26-35", "36-50", "51+"],
+    include_lowest=True,
+)[0]
+
+# zawężenie danych do książek ocenianych przez daną grupę wiekową
+recommendation_data = data[data["Age_Group"] == new_user_age_group].copy()
+
+# ustawienie wieku nowego użytkownika
+recommendation_data["Age"] = new_user_age
+
+recommendation_data = recommendation_data.merge(
+    books[["ISBN", "Book-Title", "Book-Author"]],
+    on="ISBN"
+)
+
+# dane wejściowe perceptrona dla nowego uzytkownia 
+recommendation_x = recommendation_data[
+    [
+        "Age",
+        "Book_Average_Rating_By_Age",
+        "Book_Average_Rating",
+    ]
+].values
+
+recommendation_data["Prediction"] = perceptron.predict(recommendation_x)
+
+# lista książek, które perceptron oznaczył jako 1 czyli "może polubić", posortowane malejąco
+recommended_books = recommendation_data[
+    recommendation_data["Prediction"] == 1
+].sort_values(
+    by=["Book_Average_Rating_By_Age", "Book_Average_Rating"],
+    ascending=False
+)
+
+print("\nPrzykładowy użytkownik:")
+print("Age:", new_user_age)
+print("Age group:", new_user_age_group)
+
+print("\nProponowana książka:")
+
+if len(recommended_books) > 0:
+    selected_book = recommended_books.iloc[0]
+
+    print("Tytuł:", selected_book["Book-Title"])
+    print("Autor:", selected_book["Book-Author"])
+    print("ISBN:", selected_book["ISBN"])
+
+    print(
+        "Średnia ocena w grupie wiekowej:",
+        round(selected_book["Book_Average_Rating_By_Age"], 2),
+    )
+
+    print(
+        "Średnia ocena ogólna:",
+        round(selected_book["Book_Average_Rating"], 2),
+    )
+
+    print(
+        "Liczba ocen w tej grupie wiekowej:",
+        selected_book["Book_Age_Ratings_Count"],
+    )
+
+else:
+    print("Brak rekomendacji dla tej grupy wiekowej.")
