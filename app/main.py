@@ -12,6 +12,9 @@ users = pd.read_csv("app/datasets/Users.csv", encoding="latin-1", sep=";")
 users = users[users["Age"].notnull()]
 users = users[users["Age"] >= 13]
 
+# wyciągnięcie kraju z lokalizacji
+users["Country"] = users["Location"].str.split(",").str[-1].str.strip()
+
 # usunięcie rekordów bez ocen
 ratings = ratings[ratings["Book-Rating"] != 0]
 
@@ -43,9 +46,24 @@ book_age_features = (
     .reset_index()
 )
 
+# średnia ocen książki w danej grupie wiekowej i kraju
+book_age_country_features = (
+    data.groupby(["ISBN", "Age_Group", "Country"], observed=True)
+    .agg(
+        Book_Average_Rating_By_Age_Country=("Book-Rating", "mean"),
+        Book_Age_Country_Ratings_Count=("Book-Rating", "count"),
+    )
+    .reset_index()
+)
+
 # wykluczenie przypadków, gdzie książka ma zbyt mało ocen w danej grupie wiekowej
 reliable_book_age_features = book_age_features[
     book_age_features["Book_Age_Ratings_Count"] > 10
+]
+
+# wykluczenie przypadków, gdzie książka ma zbyt mało ocen w danej grupie wiekowej i kraju
+reliable_book_age_country_features = book_age_country_features[
+    book_age_country_features["Book_Age_Country_Ratings_Count"] > 2
 ]
 
 # selekcja danych
@@ -127,6 +145,8 @@ if new_user_age < 13 or new_user_age > 100:
     print("Wiek użytkownika musi być w zakresie od 13 do 100.")
     exit()
 
+new_user_country = input("Podaj kraj użytkownika (en): ").strip().lower()
+
 # przypisanie użytkownika do danej grupy wiekowej
 new_user_age_group = pd.cut(
     [new_user_age],
@@ -135,8 +155,27 @@ new_user_age_group = pd.cut(
     include_lowest=True,
 )[0]
 
-# zawężenie danych do książek ocenianych przez daną grupę wiekową
-recommendation_data = data[data["Age_Group"] == new_user_age_group].copy()
+# zawężenie danych do książek ocenianych przez daną grupę wiekową i kraj
+recommendation_country_data = data.merge(
+    reliable_book_age_country_features,
+    on=["ISBN", "Age_Group", "Country"],
+)
+
+recommendation_data = recommendation_country_data[
+    (recommendation_country_data["Age_Group"] == new_user_age_group)
+    & (recommendation_country_data["Country"] == new_user_country)
+].copy()
+
+recommendation_type = "dla tej grupy wiekowej i kraju"
+recommendation_sort_column = "Book_Average_Rating_By_Age_Country"
+recommendation_count_column = "Book_Age_Country_Ratings_Count"
+
+if recommendation_data.empty:
+    # jeśli brakuje danych dla kraju, używamy samej grupy wiekowej
+    recommendation_data = data[data["Age_Group"] == new_user_age_group].copy()
+    recommendation_type = "dla tej grupy wiekowej"
+    recommendation_sort_column = "Book_Average_Rating_By_Age"
+    recommendation_count_column = "Book_Age_Ratings_Count"
 
 # ustawienie wieku nowego użytkownika
 recommendation_data["Age"] = new_user_age
@@ -146,7 +185,7 @@ recommendation_data = recommendation_data.merge(
     on="ISBN"
 )
 
-# dane wejściowe perceptrona dla nowego uzytkownia 
+# dane wejściowe perceptrona dla nowego użytkownika
 recommendation_x = recommendation_data[
     [
         "Age",
@@ -161,13 +200,46 @@ recommendation_data["Prediction"] = perceptron.predict(recommendation_x)
 recommended_books = recommendation_data[
     recommendation_data["Prediction"] == 1
 ].sort_values(
-    by=["Book_Average_Rating_By_Age", "Book_Average_Rating"],
+    by=[recommendation_sort_column, "Book_Average_Rating"],
     ascending=False
 )
+
+if len(recommended_books) == 0 and recommendation_type == "dla tej grupy wiekowej i kraju":
+    # jeśli perceptron nie znalazł rekomendacji dla kraju, używamy samej grupy wiekowej
+    recommendation_data = data[data["Age_Group"] == new_user_age_group].copy()
+    recommendation_type = "dla tej grupy wiekowej"
+    recommendation_sort_column = "Book_Average_Rating_By_Age"
+    recommendation_count_column = "Book_Age_Ratings_Count"
+
+    recommendation_data["Age"] = new_user_age
+
+    recommendation_data = recommendation_data.merge(
+        books[["ISBN", "Book-Title", "Book-Author"]],
+        on="ISBN"
+    )
+
+    recommendation_x = recommendation_data[
+        [
+            "Age",
+            "Book_Average_Rating_By_Age",
+            "Book_Average_Rating",
+        ]
+    ].values
+
+    recommendation_data["Prediction"] = perceptron.predict(recommendation_x)
+
+    recommended_books = recommendation_data[
+        recommendation_data["Prediction"] == 1
+    ].sort_values(
+        by=[recommendation_sort_column, "Book_Average_Rating"],
+        ascending=False
+    )
 
 print("\nPrzykładowy użytkownik:")
 print("Age:", new_user_age)
 print("Age group:", new_user_age_group)
+print("Country:", new_user_country)
+print("Recommendation type:", recommendation_type)
 
 print("\nProponowana książka:")
 
@@ -179,8 +251,8 @@ if len(recommended_books) > 0:
     print("ISBN:", selected_book["ISBN"])
 
     print(
-        "Średnia ocena w grupie wiekowej:",
-        round(selected_book["Book_Average_Rating_By_Age"], 2),
+        "Średnia ocena użyta do rekomendacji:",
+        round(selected_book[recommendation_sort_column], 2),
     )
 
     print(
@@ -189,8 +261,8 @@ if len(recommended_books) > 0:
     )
 
     print(
-        "Liczba ocen w tej grupie wiekowej:",
-        selected_book["Book_Age_Ratings_Count"],
+        "Liczba ocen użytych do rekomendacji:",
+        selected_book[recommendation_count_column],
     )
 
 else:
